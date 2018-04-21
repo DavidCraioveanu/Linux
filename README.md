@@ -1,2 +1,2 @@
 # Linux
-Here I'm gona post a few scripts
+Here I'm gonna post a few scripts
