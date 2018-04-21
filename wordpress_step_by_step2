@@ -1,0 +1,120 @@
+# new data
+DATABASE: 'website'
+USER: 'webdbuser'
+PASSWORD: 'str0ngPa$$2000'
+
+
+# became root
+sudo -i
+
+
+### install required packages
+apt-get install apache2 php7.0 php7.0-curl php7.0-gd php7.0-mbstring php7.0-mcrypt php7.0-mysql php7.0-xml php7.0-xmlrpc
+
+### activate rewrite apache module needed by wordpress
+a2enmod rewrite
+
+### create virtualhost definition
+#vim /etc/apache2/sites-available/001-website1.conf
+
+<VirtualHost *:80>
+	ServerName www.website1.com
+	ServerAlias website1.com
+
+	ServerAdmin webmaster@website1.com
+	DocumentRoot /var/www/website1
+
+	<Directory /var/www/website1/wp-admin/>
+		AllowOverride All
+		AuthType Basic
+		AuthName "Secure admin panel"
+		AuthUserFile /etc/apache2/users
+		Require valid-user
+	</Directory>
+
+    <Directory /var/www/website1/>
+		AllowOverride All
+	</Directory>
+
+
+	ErrorLog ${APACHE_LOG_DIR}/website1_error.log
+	CustomLog ${APACHE_LOG_DIR}/website1_access.log combined
+
+</VirtualHost>
+
+### test apache config
+apachectl configtest
+
+
+###disable IPv6
+#vim /etc/sysctl.d/disable_ipv6.conf
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
+
+### apply new sysctl config
+#sysctl -p
+
+### fix error for not fully qualified name
+#vim /etc/hosts
+172.16.0.250 www.website1.com
+
+
+
+### Create document root
+cd /var/www/
+mkdir website1
+chown -R www-data:www-data website1
+chmod g+s website1
+
+### Download latest wordpress version
+cd /tmp
+wget https://wordpress.org/latest.tar.gz
+### extract the downloaded archive
+tar xvf latest.tar.gz 
+
+### prepare the new instalation
+cd wordpress/
+### prepare .htaccess file for wordpress instalation
+touch .htaccess
+chmod 660 .htaccess
+### create directory for wordpress upgrade
+mkdir wp-content/upgrade
+### copy config file from sample config
+cp wp-config-sample.php wp-config.php
+
+### copy all files to documentroot 
+cp -R * /var/www/website1/
+
+### fix owner for all files
+cd /var/www
+chown -R gwww-data:www-data website1
+
+### allow group write to wp-content for apache user
+chmod g+w wp-content
+chmod -R g+w wp-content/plugins
+chmod -R g+w wp-content/themes
+chmod -R g+w wp-content/upgrade
+
+### generate secret keys using wordpress generator 
+curl -s https://api.wordpress.org/secret-key/1.1/salt/
+
+### edit config file si completam/modificam database, user, pass
+vim wp-config.php 
+
+### disable default site
+a2dissite 000-default.conf
+
+### enable our new site
+a2ensite 001-website1.conf 
+
+### reload apache service 
+systemctl reload apache2
+
+### prepare named access to our new site
+vim /etc/hosts
+#prepend this file with
+35.205.255.237 www.website1.com
+
+# accesam interfata de administrare wordpress
+http://35.205.255.237:7080/wp-admin
